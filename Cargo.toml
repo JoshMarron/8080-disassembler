@@ -1,0 +1,6 @@
+[package]
+name = "disassembler-8080"
+version = "0.1.0"
+authors = ["Joshua Marron <marronjosh@hotmail.com>"]
+
+[dependencies]
