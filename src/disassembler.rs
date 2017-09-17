@@ -164,6 +164,75 @@ pub fn disassemble(reader: &ByteReader) -> Result<(), Box<Error>> {
             },
             0x27 => {
                 println!("{:04X} DAA", pc);
+            },
+            0xa6 => {
+                println!("{:04X} ANA M", pc);
+            },
+            0xa0...0xa7 => {
+                let (_, r_name) = disassembler.get_register_names(byte);
+                println!("{:04X} ANA {}", pc, r_name);
+            },
+            0xe6 => {
+                let data = iter.next().unwrap();
+                println!("{:04X} ANI #${:02X}", pc, data);
+                pc += 1;
+            },
+            0xae => {
+                println!("{:04X} XRA M", pc);
+            },
+            0xa8...0xaf => {
+                let (_, r_name) = disassembler.get_register_names(byte);
+                println!("{:04X} XRA {}", pc, r_name);
+            },
+            0xee => {
+                let data = iter.next().unwrap();
+                println!("{:04X} XRI #${:02X}", pc, data);
+                pc += 1;
+            },
+            0xb6 => {
+                println!("{:04X} ORA M", pc);
+            },
+            0xb0...0xb7 => {
+                let (_, r_name) = disassembler.get_register_names(byte);
+                println!("{:04X} ORA {}", pc, r_name);
+            },
+            0xf6 => {
+                let data = iter.next().unwrap();
+                println!("{:04X} ORI #${:02X}", pc, data);
+                pc += 1;
+            },
+            0xbe => {
+                println!("{:04X} CMP M", pc);
+            },
+            0xb8...0xbf => {
+                let (_, r_name) = disassembler.get_register_names(byte);
+                println!("{:04X} CMP {}", pc, r_name);
+            },
+            0xfe => {
+                let data = iter.next().unwrap();
+                println!("{:04X} CPI #${:02X}", pc, data);
+                pc += 1;
+            },
+            0x07 => {
+                println!("{:04X} RLC", pc);
+            },
+            0x0f => {
+                println!("{:04X} RRC", pc);
+            },
+            0x17 => {
+                println!("{:04X} RAL", pc);
+            },
+            0x1f => {
+                println!("{:04X} RAR", pc);
+            },
+            0x2f => {
+                println!("{:04X} CMA", pc);
+            },
+            0x3f => {
+                println!("{:04X} CMC", pc);
+            },
+            0x37 => {
+                println!("{:04X} STC", pc);
             }
             _ => println!("unknown")
         }
