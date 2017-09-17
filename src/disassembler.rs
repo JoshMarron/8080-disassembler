@@ -134,6 +134,7 @@ pub fn disassemble(reader: &ByteReader) -> Result<(), Box<Error>> {
             0xde => {
                 let data = iter.next().unwrap();
                 println!("{:04X} SBI #${:02X}", pc, data);
+                pc += 1;
             },
             0x34 => {
                 println!("{:04X} INR M", pc);
@@ -152,6 +153,17 @@ pub fn disassemble(reader: &ByteReader) -> Result<(), Box<Error>> {
             0x03 | 0x13 | 0x23 | 0x33 => {
                 let rp_name = disassembler.get_register_pair(byte);
                 println!("{:04X} INX {}", pc, rp_name);
+            },
+            0x0b | 0x1b | 0x2b | 0x3b => {
+                let rp_name = disassembler.get_register_pair(byte);
+                println!("{:04X} DCX {}", pc, rp_name);
+            },
+            0x09 | 0x19 | 0x29 | 0x39 => {
+                let rp_name = disassembler.get_register_pair(byte);
+                println!("{:04X} DAD {}", pc, rp_name);
+            },
+            0x27 => {
+                println!("{:04X} DAA", pc);
             }
             _ => println!("unknown")
         }
