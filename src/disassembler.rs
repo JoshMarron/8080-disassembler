@@ -233,7 +233,64 @@ pub fn disassemble(reader: &ByteReader) -> Result<(), Box<Error>> {
             },
             0x37 => {
                 println!("{:04X} STC", pc);
+            },
+            0xc3 => {
+                let low_addr = iter.next().unwrap();
+                let high_addr = (iter.next().unwrap() as u16) << 8;
+                let address = low_addr as u16 + high_addr;
+                println!("{:04X} JMP ${:04x}", pc, address);
+                pc += 2;
+            },
+            0xc2 | 0xca | 0xd2 | 0xda |
+            0xe2 | 0xea | 0xf2 | 0xfa => {
+                let low_addr = iter.next().unwrap();
+                let high_addr = (iter.next().unwrap() as u16) << 8;
+                let address = low_addr as u16 + high_addr;
+                let cond = disassembler.get_condition(byte);
+                println!("{:04X} JMP {} ${:04x}", pc, cond, address);
+                pc += 2;
+            },
+            0xcd => {
+                let low_addr = iter.next().unwrap();
+                let high_addr = (iter.next().unwrap() as u16) << 8;
+                let address = low_addr as u16 + high_addr;
+                println!("{:04X} CALL ${:04X}", pc, address);
+                pc += 2;
+            },
+            0xc4 | 0xcc | 0xd4 | 0xdc |
+            0xe4 | 0xec | 0xf4 | 0xfc => {
+                let low_addr = iter.next().unwrap();
+                let high_addr = (iter.next().unwrap() as u16) << 8;
+                let address = low_addr as u16 + high_addr;
+                let cond = disassembler.get_condition(byte);
+                println!("{:04X} CALL {} ${:04x}", pc, cond, address);
+                pc += 2;
+            },
+            0xc9 => {
+                let low_addr = iter.next().unwrap();
+                let high_addr = (iter.next().unwrap() as u16) << 8;
+                let address = low_addr as u16 + high_addr;
+                println!("{:04X} RET ${:04X}", pc, address);
+                pc += 2;
+            },
+            0xc0 | 0xc8 | 0xd0 | 0xd8 |
+            0xe0 | 0xe8 | 0xf0 | 0xf8 => {
+                let low_addr = iter.next().unwrap();
+                let high_addr = (iter.next().unwrap() as u16) << 8;
+                let address = low_addr as u16 + high_addr;
+                let cond = disassembler.get_condition(byte);
+                println!("{:04X} RET {} ${:04x}", pc, cond, address);
+                pc += 2;
+            },
+            0xc7 | 0xcf | 0xd7 | 0xdf |
+            0xe7 | 0xef | 0xf7 | 0xff => {
+                let (r_name, _) = disassembler.get_register_names(byte);
+                println!("{:04X} RST {}", pc, r_name);
+            },
+            0xe9 => {
+                println!("{:04X} PCHL");
             }
+
             _ => println!("unknown")
         }
         pc += 1;
@@ -244,14 +301,16 @@ pub fn disassemble(reader: &ByteReader) -> Result<(), Box<Error>> {
 
 struct Disassembler {
     register_map: HashMap<u8, &'static str>,
-    register_pair_map: HashMap<u8, &'static str>
+    register_pair_map: HashMap<u8, &'static str>,
+    condition_code_map: HashMap<u8, &'static str>
 }
 
 impl Disassembler {
     fn new() -> Disassembler {
         let mut result = Disassembler {
             register_map: HashMap::new(),
-            register_pair_map: HashMap::new()
+            register_pair_map: HashMap::new(),
+            condition_code_map: HashMap::new()
         };
 
         result.set_up_register_maps();
@@ -271,7 +330,16 @@ impl Disassembler {
         self.register_pair_map.insert(0b00, "B");        
         self.register_pair_map.insert(0b01, "D");
         self.register_pair_map.insert(0b10, "H");
-        self.register_pair_map.insert(0b11, "SP");        
+        self.register_pair_map.insert(0b11, "SP");
+
+        self.condition_code_map.insert(0b000, "NZ");        
+        self.condition_code_map.insert(0b001, "Z");       
+        self.condition_code_map.insert(0b010, "NC");        
+        self.condition_code_map.insert(0b011, "C");        
+        self.condition_code_map.insert(0b100, "PO");        
+        self.condition_code_map.insert(0b101, "PE");        
+        self.condition_code_map.insert(0b110, "P");        
+        self.condition_code_map.insert(0b111, "M");        
     }
 
     fn is_mov_register(&self, instruction: u8) -> bool {
@@ -321,6 +389,13 @@ impl Disassembler {
         let rp_code = (instruction & rp_mask) >> 4;
 
         self.register_pair_map.get(&rp_code).unwrap_or(&"err").to_string()
+    }
+
+    fn get_condition(&self, instruction: u8) -> String {
+        let cond_mask = 0b00111000;
+        let cond_code = (instruction & cond_mask) >> 3;
+
+        self.condition_code_map.get(&cond_code).unwrap_or(&"err").to_string()
     }
 }
 
