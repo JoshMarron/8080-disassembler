@@ -19,6 +19,13 @@ pub fn disassemble(reader: &ByteReader) -> Result<(), Box<Error>> {
             0x00 => {
                 println!("{:04X} NOP", pc);
             },
+            0x01 | 0x11 | 0x21 | 0x31 => {
+                let low_data = iter.next().unwrap();
+                let high_data = iter.next().unwrap();
+                let rp_name = disassembler.get_register_pair(byte.clone());
+                println!("{:04X} LXI {}, #${:02x}{:02x}", pc, rp_name, high_data, low_data);
+                pc += 2;
+            },
             0x40...0x7f if disassembler.is_mov_register(byte.clone()) => { 
                 let (r1_name, r2_name) = disassembler.get_register_names(byte);
                 println!("{:04X} MOV {}, {}", pc, r2_name, r1_name); 
@@ -41,13 +48,6 @@ pub fn disassemble(reader: &ByteReader) -> Result<(), Box<Error>> {
                 let data = iter.next().unwrap();
                 println!("{:04X} MVI M, #${:02x}", pc, data);
                 pc += 1;
-            },
-            0x01 | 0x11 | 0x21 | 0x31 => {
-                let low_data = iter.next().unwrap();
-                let high_data = iter.next().unwrap();
-                let rp_name = disassembler.get_register_pair(byte.clone());
-                println!("{:04X} LXI {}, #${:02x}{:02x}", pc, rp_name, high_data, low_data);
-                pc += 2;
             },
             0x3a => {
                 let low_addr = iter.next().unwrap();
@@ -288,10 +288,51 @@ pub fn disassemble(reader: &ByteReader) -> Result<(), Box<Error>> {
                 println!("{:04X} RST {}", pc, r_name);
             },
             0xe9 => {
-                println!("{:04X} PCHL");
+                println!("{:04X} PCHL", pc);
+            },
+            0xc5 | 0xd5 | 0xe5 => {
+                let rp_name = disassembler.get_register_pair(byte);
+                println!("{:04X} PUSH {}", pc, rp_name);
+            },
+            0xf5 => {
+                println!("{:04X} PUSH PSW", pc);
+            },
+            0xc1 | 0xd1 | 0xe1 => {
+                let rp_name = disassembler.get_register_pair(byte);
+                println!("{:04X} POP {}", pc, rp_name);
+            },
+            0xf1 => {
+                println!("{:04X} POP PSW", pc);
+            },
+            0xe3 => {
+                println!("{:04X} XTHL", pc);
+            },
+            0xf9 => {
+                println!("{:04X} SPHL", pc);
+            },
+            0xdb => {
+                let port = iter.next().unwrap();
+                println!("{:04X} IN #${:02X}", pc, port);
+                pc += 1;
+            },
+            0xd3 => {
+                let port = iter.next().unwrap();
+                println!("{:04X} OUT #${:02X}", pc, port);
+                pc += 1;
+            },
+            0xfb => {
+                println!("{:04X} EI", pc);
+            },
+            0xf3 => {
+                println!("{:04X} DI", pc);
             }
-
-            _ => println!("unknown")
+            0x76 => {
+                println!("{:04X} HLT", pc);
+            },
+            0x30 | 0xd9 | 0xcb | 0xed | 0xfd => {
+                println!("{:04X} NOP", pc);
+            }
+            _ => println!("{:04X} unknown: {:02X}", pc, byte)
         }
         pc += 1;
     }
@@ -348,20 +389,17 @@ impl Disassembler {
         
         let r1_code = (instruction & r1_mask) >> 3;
         let r2_code = instruction & r2_mask;
-
-        (r1_code != r2_code) && 
+ 
         self.register_map.contains_key(&r1_code) && 
         self.register_map.contains_key(&r2_code)
     }
 
     fn has_destination_register(&self, instruction: u8) -> bool {
         let r1_mask =       0b00111000;
-        let suffix_mask =   0b00000111;
 
         let r1_code = (instruction & r1_mask) >> 3;
-        let suffix = instruction & suffix_mask;
 
-        self.register_map.contains_key(&r1_code) && suffix == 0b110
+        self.register_map.contains_key(&r1_code)
     }
 
     fn has_source_register(&self, instruction: u8) -> bool {
